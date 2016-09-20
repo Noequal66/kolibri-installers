@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="10116" systemVersion="15E65" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none" useAutolayout="YES" customObjectInstantitationMethod="direct">
+<document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="10116" systemVersion="15F34" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none" useAutolayout="YES" customObjectInstantitationMethod="direct">
     <dependencies>
         <deployment identifier="macosx"/>
         <development version="6300" identifier="xcode"/>
@@ -165,11 +165,11 @@ Gw
                         <tabViewItems>
                             <tabViewItem label="Preferences" identifier="1" id="bsG-cY-LW8">
                                 <view key="view" ambiguous="YES" id="B8D-my-NmZ">
-                                    <rect key="frame" x="10" y="33" width="447" height="328"/>
+                                    <rect key="frame" x="10" y="33" width="128" height="0.0"/>
                                     <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                     <subviews>
                                         <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="Eur-YG-XhD">
-                                            <rect key="frame" x="11" y="269" width="119" height="32"/>
+                                            <rect key="frame" x="11" y="-59" width="119" height="32"/>
                                             <buttonCell key="cell" type="push" title="Start Kolibri" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="AIv-42-gwi">
                                                 <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
                                                 <font key="font" metaFont="system"/>
@@ -179,7 +179,7 @@ Gw
                                             </connections>
                                         </button>
                                         <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="ixV-cY-gLJ">
-                                            <rect key="frame" x="153" y="269" width="118" height="32"/>
+                                            <rect key="frame" x="153" y="-59" width="118" height="32"/>
                                             <buttonCell key="cell" type="push" title="Stop Kolibri" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="Liy-0e-2VH">
                                                 <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
                                                 <font key="font" metaFont="system"/>
@@ -189,7 +189,7 @@ Gw
                                             </connections>
                                         </button>
                                         <box autoresizesSubviews="NO" fixedFrame="YES" title="Uninstall Kolibri" borderType="line" translatesAutoresizingMaskIntoConstraints="NO" id="2Uh-zQ-2n5">
-                                            <rect key="frame" x="14" y="5" width="419" height="82"/>
+                                            <rect key="frame" x="14" y="-323" width="419" height="82"/>
                                             <view key="contentView">
                                                 <rect key="frame" x="1" y="1" width="417" height="63"/>
                                                 <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
@@ -228,7 +228,7 @@ Gw
                                             <font key="titleFont" metaFont="systemBold"/>
                                         </box>
                                         <box autoresizesSubviews="NO" fixedFrame="YES" title="Application behavior" borderType="line" translatesAutoresizingMaskIntoConstraints="NO" id="Sqz-dv-Dpy">
-                                            <rect key="frame" x="14" y="101" width="419" height="91"/>
+                                            <rect key="frame" x="14" y="-227" width="419" height="91"/>
                                             <view key="contentView">
                                                 <rect key="frame" x="1" y="1" width="417" height="72"/>
                                                 <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
@@ -257,7 +257,7 @@ Gw
                                             <font key="titleFont" metaFont="systemBold"/>
                                         </box>
                                         <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="wxg-iv-YDa">
-                                            <rect key="frame" x="293" y="269" width="143" height="32"/>
+                                            <rect key="frame" x="293" y="-59" width="143" height="32"/>
                                             <buttonCell key="cell" type="push" title="Open in Browser" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="49I-m5-mkT">
                                                 <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
                                                 <font key="font" metaFont="system"/>
@@ -267,7 +267,7 @@ Gw
                                             </connections>
                                         </button>
                                         <box autoresizesSubviews="NO" fixedFrame="YES" borderType="line" titlePosition="noTitle" translatesAutoresizingMaskIntoConstraints="NO" id="PbE-4O-LPb">
-                                            <rect key="frame" x="14" y="205" width="419" height="53"/>
+                                            <rect key="frame" x="14" y="-123" width="419" height="53"/>
                                             <view key="contentView">
                                                 <rect key="frame" x="1" y="1" width="417" height="51"/>
                                                 <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
@@ -338,7 +338,7 @@ Gw
                                                 <autoresizingMask key="autoresizingMask"/>
                                             </scroller>
                                             <scroller key="verticalScroller" verticalHuggingPriority="750" horizontal="NO" id="RPA-mO-93H">
-                                                <rect key="frame" x="437" y="1" width="15" height="293"/>
+                                                <rect key="frame" x="1" y="1" width="15" height="0.0"/>
                                                 <autoresizingMask key="autoresizingMask"/>
                                             </scroller>
                                         </scrollView>
