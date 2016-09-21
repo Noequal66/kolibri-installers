@@ -28,12 +28,6 @@
 }
 
 
-// TODO(amodia): Show menu bar on dock icon.
-//- (NSMenu *)applicationDockMenu:(NSApplication *)sender {
-//    return self.statusMenu;
-//}
-
-
 - (void)applicationWillFinishLaunching:(NSNotification *)aNotification {
     // TODO(cpauya): Get version from the project's .plist file or from `kolibri --version`.
     self.version = @"0.16";
@@ -51,17 +45,7 @@
     // Set the delegate to self to make sure notifications work properly.
     [[NSUserNotificationCenter defaultUserNotificationCenter] setDelegate:self];
     
-    // MUST: Let's check the setup if everything is good!
-    if ([self checkSetup:YES] == NO) {
-        // The application must terminate if setup is not good.
-        void *sel = @selector(closeSplash);
-        alert(@"The Kolibri installation is not complete, please re-install Kolibri. \n\nRefer to the Console app for details.");
-        [[NSApplication sharedApplication] terminate:nil];
-        return;
-    }
-    
     // Setup is good, let's continue.
-    
     // Make sure to register default values for the user preferences.
     [self registerDefaultPreferences];
     
@@ -73,14 +57,6 @@
     
     [self.kolibriDataHelp setToolTip:@"This will set the KOLIBRI_HOME environment variable to the selected Kolibri data location. \n \nClick the 'Apply' button to save your changes and click the 'Start Kolibri' button to use your new data location. \n \nNOTE: To use your existing Kolibri data, manually copy it to the selected Kolibri data location."];
     [self.kolibriUninstallHelp setToolTip:@"This will uninstall the Kolibri application. \n \nCheck the `Delete Kolibri data folder` option if you want to delete your Kolibri data. \n \nNOTE: This will require admin privileges."];
-
-//    @try {
-//        [self runKolibri:@"--version"];
-//        [self getKolibriStatus];
-//    }
-//    @catch (NSException *ex) {
-//        NSLog(@"Kolibri had an Error: %@", ex);
-//    }
     
     void *sel = @selector(closeSplash);
     [NSTimer scheduledTimerWithTimeInterval:0.1 target:self selector:sel userInfo:nil repeats:NO];
@@ -88,13 +64,14 @@
 
     // TODO(cpauya): Auto-start Kolibri on application load.
     if (self.autoStartOnLoad) {
-        [self startFunction];
+//        [self startFunction];
     } else {
         // Get the status to determine the menu bar icon to display but don't show any notifications.
         // The `isLoaded` property will be set to YES the initial status check.
         showNotification(@"Kolibri is now loaded, click on the Start Kolibri menu to get started.", @"");
         [self getKolibriStatus];
     }
+    [self showStatus:self.status];
 
 }
 
@@ -180,6 +157,37 @@ BOOL checkEnvVars() {
         range = NSMakeRange([self.taskLogs.string length], 0);
         [self.taskLogs scrollRangeToVisible:range];
     });
+}
+
+
+- (void) exeKolibriCommand:(NSString *)command {
+    
+    NSString *kolibriCommand = [NSString stringWithFormat:@"/Users/user/Downloads/kolibri-static-0.0.1.dev20160824185943.pex %@",command];
+    NSArray *array = [NSArray arrayWithObjects:@"-l",
+                      @"-c",
+                      kolibriCommand,
+                      nil];
+    NSTask* task = [[NSTask alloc] init];
+    
+    [task setLaunchPath: @"/bin/bash"];
+    [task setArguments: array];
+    
+    NSPipe *pipeOutput = [NSPipe pipe];
+    task.standardOutput = pipeOutput;
+    task.standardError = pipeOutput;
+    
+    [[task.standardOutput fileHandleForReading] setReadabilityHandler:^(NSFileHandle *file) {
+        NSData *data = [file availableData]; // this will read to EOF, so call only once
+        NSString *outStr = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+        if (self.status != self.lastStatus) {
+            NSLog(@"%@", [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding]);
+            [self displayLogs:outStr];
+        }
+        
+    }];
+    
+    [task launch];
+    
 }
 
 
@@ -326,31 +334,31 @@ BOOL kolibriExists() {
         return self.status;
     }
     
-    if (checkKolibriExecutable()) {
-        if ([taskArgsSet isEqualToSet:statusArgsSet]) {
-            // MUST: The result is on the 9th bit of the returned value.  Not sure why this
-            // is but maybe because of the returned values from the `system()` call.  For now
-            // we shift 8 bits to the right until we figure this one out.  TODO(cpauya): fix later
-            if (status >= 255) {
-                status = status >> 8;
-            }
-            [self setNewStatus:status];
-            if (oldStatus != status) {
-                [self showStatus:self.status];
-            }
-            return self.status;
-        } else {
-            // If command is not "status", run `Kolibri status` to get status of kolibri.
-            // We need this check because this may be called inside the kolibri timer.
-            NSLog(@"Fetching `Kolibri status`...");
-            [self getKolibriStatus];
-            return self.status;
-        }
-    } else {
-        [self setNewStatus:statusCouldNotDetermineStatus];
-        [self showStatus:self.status];
-        showNotification(@"The `Kolibri` executable does not exist!", @"");
-    }
+//    if (checkKolibriExecutable()) {
+//        if ([taskArgsSet isEqualToSet:statusArgsSet]) {
+//            // MUST: The result is on the 9th bit of the returned value.  Not sure why this
+//            // is but maybe because of the returned values from the `system()` call.  For now
+//            // we shift 8 bits to the right until we figure this one out.  TODO(cpauya): fix later
+//            if (status >= 255) {
+//                status = status >> 8;
+//            }
+//            [self setNewStatus:status];
+//            if (oldStatus != status) {
+//                [self showStatus:self.status];
+//            }
+//            return self.status;
+//        } else {
+//            // If command is not "status", run `Kolibri status` to get status of kolibri.
+//            // We need this check because this may be called inside the kolibri timer.
+//            NSLog(@"Fetching `Kolibri status`...");
+//            [self getKolibriStatus];
+//            return self.status;
+//        }
+//    } else {
+//        [self setNewStatus:statusCouldNotDetermineStatus];
+//        [self showStatus:self.status];
+//        showNotification(@"The `Kolibri` executable does not exist!", @"");
+//    }
     return self.status;
 }
 
@@ -360,7 +368,7 @@ BOOL kolibriExists() {
         // MUST: This will make sure the process to run has access to the environment variable
         // because the .app may be loaded the first time.
         if (checkKolibriExecutable()) {
-            [self runTask:command];
+//            [self runTask:command];
         }
     }
     @catch (NSException *ex) {
@@ -439,7 +447,7 @@ void showNotification(NSString *subtitle, NSString *info) {
 
 
 NSString *getKolibriExecutable() {
-    return @"/usr/local/bin/Kolibri";
+    return @"/Users/user/Downloads/kolibri-static-0.0.1.dev20160824185943.pex";
 }
 
 
@@ -587,7 +595,7 @@ NSString *getEnvVar(NSString *var) {
     }
     showNotification(@"Starting...", @"");
     [self setNewStatus:statusStartingUp];
-    [self runKolibri:@"start"];
+    [self exeKolibriCommand:@"start"];
 }
 
 
@@ -607,7 +615,7 @@ NSString *getEnvVar(NSString *var) {
 
 - (void)openFunction {
     // REF: http://stackoverflow.com/a/7129543/845481
-    NSURL *url = [NSURL URLWithString:@"http://127.0.0.1:8008/"];
+    NSURL *url = [NSURL URLWithString:@"http://127.0.0.1:8080/"];
     if( ![[NSWorkspace sharedWorkspace] openURL:url] ) {
         NSString *msg = [NSString stringWithFormat:@" Failed to open url: %@",[url description]];
         showNotification(msg, @"");
@@ -755,30 +763,7 @@ NSString *getEnvVar(NSString *var) {
 //    NSString *title = @"The Kolibri installation is incomplete.";
 //    NSString *msg = @"";
     BOOL isOk = YES;
-
-//    // Check the kolibri executable.
-//    if (! checkKolibriExecutable()) {
-//        msg = [NSString stringWithFormat:@"%@\n* The Kolibri executable cannot be found.", msg];
-//        isOk = NO;
-//    }
-//
-//    // Check the environment variables.
-//    if (! checkEnvVars()) {
-//        msg = [NSString stringWithFormat:@"%@\n* One of the KOLIBRI_PYTHON or KOLIBRI_HOME environment variables is invalid.", msg];
-//        isOk = NO;
-//    }
-//
-//    // Check the custom Kolibri data path.
-//    NSString *dataPath = getKolibriDataPath();
-//    if (dataPath == nil) {
-//        msg = [NSString stringWithFormat:@"%@\n* The custom Kolibri data path is invalid, please check the KOLIBRI_HOME environment variable value.", msg];
-//        isOk = NO;
-//    }
-//
-//    if (showIt == YES && isOk == NO) {
-//        msg = [NSString stringWithFormat:@"%@  Please try to re-install Kolibri to attempt to fix the issue/s.%@", title, msg];
-//        showNotification(title, msg);
-//    }
+    
     return isOk;
 }
 
