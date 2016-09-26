@@ -5,10 +5,10 @@
 //  Copyright (c) 2016 Learning Equality
 //
 
-// 
+//
 // Notes: Possible issues with OSX 10.10 or higher:
 // * http://www.dowdandassociates.com/blog/content/howto-set-an-environment-variable-in-mac-os-x-slash-etc-slash-launchd-dot-conf/
-// 
+//
 
 #import "AppDelegate.h"
 
@@ -28,6 +28,12 @@
 }
 
 
+// TODO(amodia): Show menu bar on dock icon.
+//- (NSMenu *)applicationDockMenu:(NSApplication *)sender {
+//    return self.statusMenu;
+//}
+
+
 - (void)applicationWillFinishLaunching:(NSNotification *)aNotification {
     // TODO(cpauya): Get version from the project's .plist file or from `kolibri --version`.
     self.version = @"0.16";
@@ -41,11 +47,21 @@
 
 //<##>applicationDidFinishLaunching
 - (void)applicationDidFinishLaunching:(NSNotification *)aNotification {
-
+    
     // Set the delegate to self to make sure notifications work properly.
     [[NSUserNotificationCenter defaultUserNotificationCenter] setDelegate:self];
     
+    // MUST: Let's check the setup if everything is good!
+    if ([self checkSetup:YES] == NO) {
+        // The application must terminate if setup is not good.
+        void *sel = @selector(closeSplash);
+        alert(@"The Kolibri installation is not complete, please re-install Kolibri. \n\nRefer to the Console app for details.");
+        [[NSApplication sharedApplication] terminate:nil];
+        return;
+    }
+    
     // Setup is good, let's continue.
+    
     // Make sure to register default values for the user preferences.
     [self registerDefaultPreferences];
     
@@ -58,21 +74,28 @@
     [self.kolibriDataHelp setToolTip:@"This will set the KOLIBRI_HOME environment variable to the selected Kolibri data location. \n \nClick the 'Apply' button to save your changes and click the 'Start Kolibri' button to use your new data location. \n \nNOTE: To use your existing Kolibri data, manually copy it to the selected Kolibri data location."];
     [self.kolibriUninstallHelp setToolTip:@"This will uninstall the Kolibri application. \n \nCheck the `Delete Kolibri data folder` option if you want to delete your Kolibri data. \n \nNOTE: This will require admin privileges."];
     
+    //    @try {
+    //        [self runKolibri:@"--version"];
+    //        [self getKolibriStatus];
+    //    }
+    //    @catch (NSException *ex) {
+    //        NSLog(@"Kolibri had an Error: %@", ex);
+    //    }
+    
     void *sel = @selector(closeSplash);
     [NSTimer scheduledTimerWithTimeInterval:0.1 target:self selector:sel userInfo:nil repeats:NO];
     [self startKolibriTimer];
-
+    
     // TODO(cpauya): Auto-start Kolibri on application load.
     if (self.autoStartOnLoad) {
-//        [self startFunction];
+        [self startFunction];
     } else {
         // Get the status to determine the menu bar icon to display but don't show any notifications.
         // The `isLoaded` property will be set to YES the initial status check.
         showNotification(@"Kolibri is now loaded, click on the Start Kolibri menu to get started.", @"");
-        [self getKolibriStatus];
+        [self showStatus:statusStopped];
     }
-    [self showStatus:self.status];
-
+    
 }
 
 
@@ -119,8 +142,8 @@
 
 
 /********************
-  Useful Methods
-********************/
+ Useful Methods
+ ********************/
 
 
 BOOL checkEnvVars() {
@@ -160,51 +183,18 @@ BOOL checkEnvVars() {
 }
 
 
-- (void) exeKolibriCommand:(NSString *)command {
-    
-    NSString *kolibriCommand = [NSString stringWithFormat:@"/Users/user/Downloads/kolibri-static-0.0.1.dev20160824185943.pex %@",command];
-    NSArray *array = [NSArray arrayWithObjects:@"-l",
-                      @"-c",
-                      kolibriCommand,
-                      nil];
-    NSTask* task = [[NSTask alloc] init];
-    
-    [task setLaunchPath: @"/bin/bash"];
-    [task setArguments: array];
-    
-    NSPipe *pipeOutput = [NSPipe pipe];
-    task.standardOutput = pipeOutput;
-    task.standardError = pipeOutput;
-    
-    [[task.standardOutput fileHandleForReading] setReadabilityHandler:^(NSFileHandle *file) {
-        NSData *data = [file availableData]; // this will read to EOF, so call only once
-        NSString *outStr = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
-        if (self.status != self.lastStatus) {
-            NSLog(@"%@", [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding]);
-            [self displayLogs:outStr];
-        }
-        
-    }];
-    
-    [task launch];
-    
-}
-
-
 - (void) runTask:(NSString *)command {
     NSString *kolibriPath;
     NSString *statusStr;
     NSString *versionStr;
+    NSString *statusPath;
+    NSString *kolibriCommand;
     NSMutableDictionary *kolibriHomeEnv;
     
     statusStr = @"status";
     versionStr = @"--version";
     
-    // Set loading indicator icon.
-    if (command != statusStr) {
-        [self.statusItem setImage:[NSImage imageNamed:@"loading"]];
-    }
-    
+    statusPath = getResourcePath(@"scripts/kolibri-status.sh");
     self.processCounter += 1;
     
     kolibriPath = getKolibriExecutable();
@@ -219,7 +209,19 @@ BOOL checkEnvVars() {
     
     //REF: http://stackoverflow.com/questions/386783/nstask-not-picking-up-path-from-the-users-environment
     NSTask* task = [[NSTask alloc] init];
-    NSString *kolibriCommand = [NSString stringWithFormat:@"kolibri %@",command];
+    // Set loading indicator icon.
+    if ([command  isEqualToString: @"stop"]) {
+        kolibriCommand = [NSString stringWithFormat:@"%@ %@", statusPath, command];
+    } else {
+        if (command != statusStr) {
+            //        [self.statusItem setImage:[NSImage imageNamed:@"loading"]];
+            kolibriCommand = [NSString stringWithFormat:@"%@ %@", getKolibriExecutable(), command];
+        
+        } else {
+            kolibriCommand = [NSString stringWithFormat:@"%@ %@", statusPath, statusStr];
+        }
+    }
+    
     NSArray *array = [NSArray arrayWithObjects:@"-l",
                       @"-c",
                       kolibriCommand,
@@ -229,7 +231,7 @@ BOOL checkEnvVars() {
     NSMutableDictionary *environment = [[NSMutableDictionary alloc] initWithDictionary:defaultEnvironment];
     [environment setObject:kolibriHomePath forKey:@"KOLIBRI_HOME"];
     [task setEnvironment:environment];
-
+    
     
     [task setLaunchPath: @"/bin/bash"];
     [task setArguments: array];
@@ -258,6 +260,7 @@ BOOL checkEnvVars() {
     [task launch];
     
 }
+
 
 
 NSString *getResourcePath(NSString *pathToAppend) {
@@ -317,48 +320,21 @@ BOOL kolibriExists() {
 
 - (enum kolibriStatus)checkRunTask:(NSNotification *)aNotification{
     NSArray *taskArguments;
-    NSArray *statusArguments;
-    enum kolibriStatus oldStatus = self.status;
+    NSArray *startArguments;
+    NSString *startPAth = [NSString stringWithFormat:@"%@%@", getKolibriExecutable(), @" start"];
     
     int status = [[aNotification object] terminationStatus];
-
+    
     taskArguments = [[aNotification object] arguments];
-    statusArguments = [[NSArray alloc]initWithObjects:@"-l", @"-c", @"kolibri status", nil];
+    startArguments = [[NSArray alloc]initWithObjects:@"-l", @"-c", startPAth, nil];
     NSSet *taskArgsSet = [NSSet setWithArray:taskArguments];
-    NSSet *statusArgsSet = [NSSet setWithArray:statusArguments];
-    
-    if (self.processCounter >= 1) {
-        self.processCounter -= 1;
+    NSSet *statusArgsSet = [NSSet setWithArray:startArguments];
+    if ([taskArgsSet isEqualToSet:statusArgsSet]) {
+        NSLog(@"=====> %d status", status);
+        if (status == 70) {
+            [self showStatus:statusOkRunning];
+        }
     }
-    if (self.processCounter != 0) {
-        return self.status;
-    }
-    
-//    if (checkKolibriExecutable()) {
-//        if ([taskArgsSet isEqualToSet:statusArgsSet]) {
-//            // MUST: The result is on the 9th bit of the returned value.  Not sure why this
-//            // is but maybe because of the returned values from the `system()` call.  For now
-//            // we shift 8 bits to the right until we figure this one out.  TODO(cpauya): fix later
-//            if (status >= 255) {
-//                status = status >> 8;
-//            }
-//            [self setNewStatus:status];
-//            if (oldStatus != status) {
-//                [self showStatus:self.status];
-//            }
-//            return self.status;
-//        } else {
-//            // If command is not "status", run `Kolibri status` to get status of kolibri.
-//            // We need this check because this may be called inside the kolibri timer.
-//            NSLog(@"Fetching `Kolibri status`...");
-//            [self getKolibriStatus];
-//            return self.status;
-//        }
-//    } else {
-//        [self setNewStatus:statusCouldNotDetermineStatus];
-//        [self showStatus:self.status];
-//        showNotification(@"The `Kolibri` executable does not exist!", @"");
-//    }
     return self.status;
 }
 
@@ -368,7 +344,7 @@ BOOL kolibriExists() {
         // MUST: This will make sure the process to run has access to the environment variable
         // because the .app may be loaded the first time.
         if (checkKolibriExecutable()) {
-//            [self runTask:command];
+            [self runTask:command];
         }
     }
     @catch (NSException *ex) {
@@ -407,7 +383,7 @@ void showNotification(NSString *subtitle, NSString *info) {
     notification.subtitle = subtitle;
     notification.informativeText = info;
     notification.soundName = @"Basso.aiff";
-
+    
     NSUserNotificationCenter *nc = [NSUserNotificationCenter defaultUserNotificationCenter];
     [nc deliverNotification:notification];
     // The notification may be optional (based on user's OS X preferences) but we must show it on the logs.
@@ -453,12 +429,12 @@ NSString *getKolibriExecutable() {
 
 NSString *getKolibriDataPath() {
     /*
-    This function returns these possible locations for the Kolibri data path:
-        1. Custom Kolibri data set by the user at the preferences dialog.
-        2. Path based on the KOLIBRI_HOME environment variable.
-        3. The default location of the Kolibri data folder at ~/.kolibri/.
-        4. nil - The above locations do not exist.
-    */
+     This function returns these possible locations for the Kolibri data path:
+     1. Custom Kolibri data set by the user at the preferences dialog.
+     2. Path based on the KOLIBRI_HOME environment variable.
+     3. The default location of the Kolibri data folder at ~/.kolibri/.
+     4. nil - The above locations do not exist.
+     */
     NSUserDefaults *prefs = [NSUserDefaults standardUserDefaults];
     NSString *customKolibriData = [prefs stringForKey:@"customKolibriData"];
     
@@ -512,7 +488,8 @@ NSString *getEnvVar(NSString *var) {
 
 - (void)showStatus:(enum kolibriStatus)status {
     // Enable/disable menu items based on status.
-    BOOL canStart = pathExists(getKolibriExecutable()) > 0 ? YES : NO;
+    BOOL canStart = YES;
+    NSLog(@"canster ===> %hhd", canStart);
     switch (status) {
         case statusFailedToStart:
             [self.startKolibri setEnabled:canStart];
@@ -560,12 +537,12 @@ NSString *getEnvVar(NSString *var) {
             self.openBrowserButton.enabled = NO;
             [self.statusItem setImage:[NSImage imageNamed:@"favicon"]];
             [self.statusItem setToolTip:@"Kolibri is stopped."];
-
+            
             // We don't want to show "Stopped" right after we have loaded the application and checked the status.
             if (self.isLoaded) {
                 showNotification(@"Stopped", @"");
             }
-
+            
             // Enable setting the custom Kolibri data path.
             [self toggleKolibriDataPath:YES];
             
@@ -589,27 +566,20 @@ NSString *getEnvVar(NSString *var) {
 
 
 - (void)startFunction {
-    if (self.processCounter != 0) {
-        alert(@"Kolibri is still processing, please wait until it is finished.");
-        return;
-    }
     showNotification(@"Starting...", @"");
-    [self setNewStatus:statusStartingUp];
-    [self exeKolibriCommand:@"start"];
+    [self runKolibri:@"start"];
+    
 }
 
 
 - (void)stopFunction:(BOOL)isQuit {
-    if (self.processCounter != 0) {
-        alert(@"Kolibri is still processing, please wait until it is finished.");
-        return;
-    }
     NSString *msg = @"Stopping";
     if (isQuit) {
         msg = @"Stopping and quitting the application...";
     }
     showNotification(msg, @"");
     [self runKolibri:@"stop"];
+    [self showStatus:statusStopped];
 }
 
 
@@ -758,12 +728,35 @@ NSString *getEnvVar(NSString *var) {
  1. `kolibri` executable exists
  2. environment variables: KOLIBRI_PYTHON, KOLIBRI_HOME
  3. Custom Kolibri data path.
-*/
+ */
 - (BOOL)checkSetup:(BOOL)showIt {
-//    NSString *title = @"The Kolibri installation is incomplete.";
-//    NSString *msg = @"";
+    //    NSString *title = @"The Kolibri installation is incomplete.";
+    //    NSString *msg = @"";
     BOOL isOk = YES;
     
+    //    // Check the kolibri executable.
+    //    if (! checkKolibriExecutable()) {
+    //        msg = [NSString stringWithFormat:@"%@\n* The Kolibri executable cannot be found.", msg];
+    //        isOk = NO;
+    //    }
+    //
+    //    // Check the environment variables.
+    //    if (! checkEnvVars()) {
+    //        msg = [NSString stringWithFormat:@"%@\n* One of the KOLIBRI_PYTHON or KOLIBRI_HOME environment variables is invalid.", msg];
+    //        isOk = NO;
+    //    }
+    //
+    //    // Check the custom Kolibri data path.
+    //    NSString *dataPath = getKolibriDataPath();
+    //    if (dataPath == nil) {
+    //        msg = [NSString stringWithFormat:@"%@\n* The custom Kolibri data path is invalid, please check the KOLIBRI_HOME environment variable value.", msg];
+    //        isOk = NO;
+    //    }
+    //
+    //    if (showIt == YES && isOk == NO) {
+    //        msg = [NSString stringWithFormat:@"%@  Please try to re-install Kolibri to attempt to fix the issue/s.%@", title, msg];
+    //        showNotification(title, msg);
+    //    }
     return isOk;
 }
 
@@ -785,7 +778,7 @@ NSString *getEnvVar(NSString *var) {
                            };
     
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
-
+    
     // MUST: Check a key in the default preferences and override with the default values if non-extant.
     NSNumber *version = [defaults objectForKey:@"version"];
     if (version == nil) {
@@ -863,7 +856,7 @@ NSString *getEnvVar(NSString *var) {
     
     [self setEnvVarsAndPlist];
     
-
+    
     // Close the preferences dialog after a successful save.
     [window orderOut:[window identifier]];
 }
@@ -874,7 +867,7 @@ NSString *getEnvVar(NSString *var) {
     
     // Show the popover first, then set it's size so it is rendered correctly.
     [popover showRelativeToRect:[sender bounds] ofView:sender preferredEdge:NSMaxXEdge];
-
+    
     // REF: http://stackoverflow.com/a/16239550/845481
     // Getting NSTextView to perfectly fit its contents
     NSString *text = popoverMsg.stringValue;
@@ -891,12 +884,12 @@ NSString *getEnvVar(NSString *var) {
 
 - (BOOL)setEnvVarsAndPlist {
     /*
-    This function sets the KOLIBRI_HOME environment variable based on the custom Kolibri data path and
-    then it sets the .plist file contents so the env var is used when computer is rebooted.
-    */
-
+     This function sets the KOLIBRI_HOME environment variable based on the custom Kolibri data path and
+     then it sets the .plist file contents so the env var is used when computer is rebooted.
+     */
+    
     // REF: http://stackoverflow.com/questions/99395/how-to-check-if-a-folder-exists-in-cocoa-objective-c
-
+    
     // This is needed to display the proper menu bar icon when applying the preferences.
     [self setNewStatus:statusCouldNotDetermineStatus];
     
@@ -940,11 +933,11 @@ NSString *getEnvVar(NSString *var) {
     NSString *target = [NSString stringWithFormat:@"%@%@", libraryLaunchAgentsPath, plist];
     NSMutableDictionary *plistDict = [[NSMutableDictionary alloc] init];
     [plistDict setObject:plist forKey:@"Label"];
-
+    
     // If autoLoadOnLogin value is TRUE, append the command to "open the Kolibri.app" to the plist.
     NSString *kolibriHomeStr = [NSString stringWithFormat:@"%@",
-                               [NSString stringWithFormat:@"launchctl setenv KOLIBRI_HOME \"%@\"", kolibriDataPath]
-                               ];    
+                                [NSString stringWithFormat:@"launchctl setenv KOLIBRI_HOME \"%@\"", kolibriDataPath]
+                                ];
     NSString *launchStr = [NSString stringWithFormat:@"%@", kolibriHomeStr];
     // Check for a not-NO here because the preference also be nil if not yet set, to which we treat it as YES since
     // we want it to default to YES.
@@ -953,13 +946,13 @@ NSString *getEnvVar(NSString *var) {
         NSString *kolibriAppPath = [NSString stringWithFormat:@"open %@", [[NSBundle mainBundle] bundlePath]];
         launchStr = [NSString stringWithFormat:@"%@ ; %@", kolibriHomeStr, kolibriAppPath];
     }
-
+    
     // More contents for the .plist command.
     NSArray *arr = @[@"sh", @"-c", launchStr];
     [plistDict setObject:arr forKey:@"ProgramArguments"];
     [plistDict setObject:[NSNumber numberWithBool:TRUE] forKey:@"RunAtLoad"];
     [plistDict setObject:self.version forKey:@"version"];
-
+    
     // Write the formed content to set the KOLIBRI_HOME env var to the .plist.
     NSLog([NSString stringWithFormat:@"Writing the .plist for the KOLIBRI_HOME environment variable... %@", plistDict]);
     BOOL ret = [plistDict writeToFile:target atomically:YES];
@@ -968,7 +961,7 @@ NSString *getEnvVar(NSString *var) {
         return FALSE;
     }
     NSLog([NSString stringWithFormat:@"Saved .plist file to %@", target]);
-
+    
     NSString *msg = [NSString stringWithFormat:@"Successfully set KOLIBRI_HOME env to %@.", kolibriDataPath];
     showNotification(msg, @"");
     return TRUE;
